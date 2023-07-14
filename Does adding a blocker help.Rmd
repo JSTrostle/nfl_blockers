@@ -132,19 +132,29 @@ bf_epa <- bf(epa ~ mo(B) + mo(D)) + student() #why not a student_t
 
 get_prior(data = pbp8, formula = bf_blockers + bf_defenders + bf_epa)
 
-#Yes, I didn't set priors. 
-#The defaults work fine here, but it would probably go way faster and
-#be way more robust if I set them all properly
+bf_prior <- c(prior(normal(0,1), class = "Intercept", resp = "B"),
+            prior(normal(0,1), class = "Intercept", resp = "D"),
+            prior(normal(0,1), class = "b", coef = "moB", resp = "D"),
+            prior(normal(0,1), class = "b", coef = "moB", resp = "epa"),
+            prior(normal(0,1), class = "b", coef = "moD", resp = "epa"),
+            prior(normal(0,1), class = "Intercept", resp = "epa"),
+            prior(gamma(2,0.1), class = "nu", resp = "epa"),
+            prior(exponential(1), class = "sigma", resp = "epa")
+            #This is still missing the dirichlet priors, and
+            #these are all normal(0,1)s, but at least we have 
+            #something basic
 
-b12.7 <- 
+
+            )
+
+blockers_model <- 
   brm(data = pbp8, 
       bf_blockers + bf_defenders + bf_epa,
-      prior = c(prior(normal(0, 1.5), class = Intercept),
-                prior(normal(0, 1), class = b)),
+      prior = bf_prior,
                 # note the new kinds of prior statements
       iter = 2000, warmup = 1000, cores = 4, chains = 4,
       seed = 12, backend="cmdstanr", stan_model_args=list(stanc_options = list("O1")),
-      file = "~/b12.07")
+      file = "~/blockers_model")
 ```
 
 
@@ -162,7 +172,7 @@ sim_data |>
 
 # and then do some fitting to the simulated data
 
-fitted(b12.7, newdata = sim_data2) |> as_tibble(.name_repair = "minimal") -> sim_data3
+fitted(blockers_model, newdata = sim_data2) |> as_tibble(.name_repair = "minimal") -> sim_data3
 
 sim_data3 |> 
   select(contains("epa")) |> 
@@ -241,6 +251,6 @@ sim_data4 |>
 
 ggsave(filename = "blockers_image_1.png", blockers_image_1, height = 9, width = 16, dpi = "retina")
 
-stancode(b12.7)
+stancode(blockers_model)
 ```
 
